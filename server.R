@@ -7,7 +7,22 @@ library(stringr)
 # 读取储存的文章数据
 data <- read.csv("https://raw.githubusercontent.com/Yorks0n/TRxiv/main/data.csv")
 
+# a function to generate formatted HTML output used in the panel
+formatPanel <- function(date, score, author, abstract, doi){
 
+  # format
+  author_out <- paste0("<p>", author, "</p>")
+  doi_out <- paste0("<a href='https://doi.org/", doi,"'>",doi,"</a>")
+  score_date_out <- paste0("<p>", "Published: ",date, "<br>","Score: ", round(score,1), ", DOI: ", doi_out, "</p>")
+  abstract_format <- str_remove_all(abstract,
+                                    "Background(?=[A-Z])|Methods(?=[A-Z])|Results(?=[A-Z])|Discussion(?=[A-Z])")
+  abstract_out <- paste0("<p>", abstract_format, "</p>")
+  
+  output <- paste0(author_out, 
+                   score_date_out,
+                   abstract_out)
+  return(output)
+  }
 
 shinyServer(function(input, output, session){
   
@@ -103,13 +118,14 @@ shinyServer(function(input, output, session){
     
     #  create the CollapsePanels
     panels <- lapply(1:(nrow(out_category)), function(i) {
-      # Background(?=[A-Z])|Methods(?=[A-Z])|Results(?=[A-Z])|Discussion(?=[A-Z])
-      abstract_format <- str_remove_all(out_category[i,"abstract"],
-                                        "Background(?=[A-Z])|Methods(?=[A-Z])|Results(?=[A-Z])|Discussion(?=[A-Z])")
+      # 
+      panelContent <- formatPanel(out_category[i,"date"],
+                                  out_category[i,"score"],
+                                  out_category[i,"authors"],
+                                  out_category[i,"abstract"],
+                                  out_category[i,"doi"])
       bsCollapsePanel(out_category[i,"title"],
-                      out_category[i,"authors"],
-                      HTML(paste0("<br><a href='https://doi.org/", out_category[i,"doi"],"'>",out_category[i,"doi"],"</a><br>")),
-                      abstract_format,
+                      HTML(panelContent),
                       style = "info")
     })
     
@@ -131,7 +147,10 @@ shinyServer(function(input, output, session){
   # 显示上次更新时间
   output$updated_time <- renderUI({
     # 将特定UNIX时间转换为POSIXct对象
-    last_update_time <- as.POSIXct(as.numeric(data$update_time[1]), origin="1970-01-01")
+    # JS时间戳是Ms为单位的，而这里是s，所以需要先截短
+    datetime <- round(as.numeric(data$upupdate_time[1])/1000)
+    last_update_time <- as.POSIXct(datetime,
+                                   origin="1970-01-01")
     
     # 计算时间差
     time_diff <- difftime(Sys.time(), last_update_time, units="hours")
@@ -139,7 +158,7 @@ shinyServer(function(input, output, session){
     # 输出小时差
     
     
-    renderText(paste("Last Update:",round(time_diff,1), "hours ago."))
+    renderText(paste("Last Update:",round(time_diff), "hours ago."))
   })
 })
 
