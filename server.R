@@ -5,7 +5,9 @@ library(stringr)
 
 
 # 读取储存的文章数据
-data <- read.csv("https://raw.githubusercontent.com/Yorks0n/TRxiv/main/data.csv")
+#data <- read.csv("https://raw.githubusercontent.com/Yorks0n/TRxiv/main/data.csv")
+# 使用reactiveFileReader实现周期性数据更新，主要为了部署在docker中持续运行的版本而修改，每小时更新一次
+getData <- reactiveFileReader(3600000, NULL, "https://raw.githubusercontent.com/Yorks0n/TRxiv/main/data.csv", read.csv)
 
 # a function to generate formatted HTML output used in the panel
 formatPanel <- function(date, score, author, abstract, doi){
@@ -28,6 +30,7 @@ shinyServer(function(input, output, session){
   
   # create selection for server
   output$server <- renderUI({
+    data <- getData()
     server_list <- sort(unique(data$server))
     selectInput("server", "Choose the Server:",selected = server_list[1], as.list(server_list))
   })
@@ -35,6 +38,7 @@ shinyServer(function(input, output, session){
   # create selection for category
   output$category <- renderUI({
     # 使用req确保这里先获得选择的server类型
+    data <- getData()
     req(input$server)
     
     selected_data <- getServerData()
@@ -54,6 +58,8 @@ shinyServer(function(input, output, session){
   
   # get selected server data
   getServerData <- reactive({
+    data <- getData()
+    
     selected_server <- req(input$server)
     selected_data <- filter(data, server == selected_server)
     selected_data
@@ -146,6 +152,7 @@ shinyServer(function(input, output, session){
   
   # 显示上次更新时间
   output$updated_time <- renderUI({
+    data <- getData()
     # 将特定UNIX时间转换为POSIXct对象
     # JS时间戳是Ms为单位的，而这里是s，所以需要先截短
     datetime <- round(as.numeric(data$upupdate_time[1])/1000)
