@@ -6,8 +6,11 @@ library(stringr)
 
 # 读取储存的文章数据
 #data <- read.csv("https://raw.githubusercontent.com/Yorks0n/TRxiv/main/data.csv")
-# 使用reactiveFileReader实现周期性数据更新，主要为了部署在docker中持续运行的版本而修改，每小时更新一次
-getData <- reactiveFileReader(3600000, NULL, "https://raw.githubusercontent.com/Yorks0n/TRxiv/main/data.csv", read.csv)
+# 使用invalidateLater实现周期性数据更新，主要为了部署在docker中持续运行的版本而修改，每小时更新一次
+getData <- reactive({
+  invalidateLater(3600000) # 每隔1h重新计算一次
+  read.csv("https://raw.githubusercontent.com/Yorks0n/TRxiv/main/data.csv") 
+})
 
 # a function to generate formatted HTML output used in the panel
 formatPanel <- function(date, score, author, abstract, doi){
